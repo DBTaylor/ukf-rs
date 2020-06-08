@@ -1,0 +1,10 @@
+[package]
+name = "ukf"
+version = "0.1.0"
+authors = ["David Taylor <david.baker.taylor@gmail.com>"]
+edition = "2018"
+description = "unscented Kalman filter"
+license = "MIT"
+
+[dependencies]
+nalgebra = "0.21.0"
