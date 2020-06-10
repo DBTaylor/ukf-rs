@@ -44,7 +44,6 @@ where
     (
         Box::new(move |x, p| {
             let c = (p * lambda_plus_n).clone().cholesky().unwrap().unpack();
-            //println!("{} {}", p, s);
             let m: GenericArray<VectorN<f32, DimX2>, DimX> =
                 c.column_iter().map(|col| x - col).collect();
             let p: GenericArray<VectorN<f32, DimX2>, DimX> =
