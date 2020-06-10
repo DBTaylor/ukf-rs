@@ -8,28 +8,23 @@ mod tests {
     #[test]
     fn filter_test() {
         let (s, w_m, w_c) = van_der_merwe::<typenum::U3, U3, U2>(0.5, 2.0, 0.0, 3.0);
-        let mut filter = Filter::new(
-            //x
-            VectorN::<f32, U3>::new(-1.0, 9.0, 0.0),
-            //p
-            MatrixN::<f32, U3>::new(0.1, 0.01, 0.01, 0.01, 1.0, 0.01, 0.01, 0.01, 1.0),
+        let x = VectorN::<f32, U3>::new(-1.0, 9.0, 0.0);
+        let p = MatrixN::<f32, U3>::new(0.1, 0.01, 0.01, 0.01, 1.0, 0.01, 0.01, 0.01, 1.0);
+        let r =  MatrixN::<f32, U2>::new(0.01, 0.0001, 0.0001, 0.01);
+        let q = MatrixN::<f32, U3>::new(0.01, 0.005, 0.005, 0.005, 0.01, 0.005, 0.005, 0.005, 0.01);
+        let mut filter = Filter::new(x, p,
             //f
             Box::new(|x| {
                 let x = VectorN::<f32, U3>::new(x[0] + 0.1 * x[1] + 0.1 * x[2], x[1], x[2]);
                 x
             }),
-            //s
             s,
-            //w_m
             w_m,
-            //w_c
             w_c,
-            //r
-            MatrixN::<f32, U2>::new(0.01, 0.0001, 0.0001, 0.01),
+            r,
             //h
             Box::new(|x| VectorN::<f32, U2>::new(x[0], x[1])),
-            //q
-            MatrixN::<f32, U3>::new(0.01, 0.005, 0.005, 0.005, 0.01, 0.005, 0.005, 0.005, 0.01),
+            q
         );
         let mut measurement = VectorN::<f32, U2>::new(0.0, 9.0);
         for i in 0..3 {
