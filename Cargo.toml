@@ -1,6 +1,6 @@
 [package]
 name = "ukf"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["David Taylor <david.baker.taylor@gmail.com>"]
 edition = "2018"
 description = "unscented Kalman filter"
@@ -10,6 +10,8 @@ license = "MIT"
 nalgebra = "0.21.0"
 generic-array = "0.14.1"
 typenum = "1.12.0"
+thiserror = "1.0.19"
+fehler = "1.0.0"
 
 [dev-dependencies]
-kf = "0.1.1"
+kf = "0.1.3"

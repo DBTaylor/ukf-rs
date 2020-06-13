@@ -2,6 +2,16 @@ use generic_array::{ArrayLength, GenericArray};
 use nalgebra::{
     allocator::Allocator, DefaultAllocator, Dim, DimName, MatrixMN, MatrixN, RealField, VectorN, U1,
 };
+use thiserror::Error;
+use fehler::{throws, throw};
+
+#[derive(Error, Debug)]
+pub enum UkfError {
+    #[error("Matrix inversion failed")]
+    InverseError,
+    #[error("Sigma point generation failed")]
+    SigmaPointError
+}
 
 pub struct Filter<DimZ, DimX, NumS, T>
 where
@@ -21,7 +31,7 @@ where
     ///system model
     f: Box<dyn Fn(&VectorN<T, DimX>) -> VectorN<T, DimX>>,
     /// sigma point function
-    s: Box<dyn Fn(&VectorN<T, DimX>, &MatrixN<T, DimX>) -> GenericArray<VectorN<T, DimX>, NumS>>,
+    s: Box<dyn Fn(&VectorN<T, DimX>, &MatrixN<T, DimX>) -> Option<GenericArray<VectorN<T, DimX>, NumS>>>,
     //
     w_m: GenericArray<T, NumS>,
     //
@@ -54,7 +64,7 @@ where
         p: MatrixN<T, DimX>,
         f: Box<dyn Fn(&VectorN<T, DimX>) -> VectorN<T, DimX>>,
         s: Box<
-            dyn Fn(&VectorN<T, DimX>, &MatrixN<T, DimX>) -> GenericArray<VectorN<T, DimX>, NumS>,
+            dyn Fn(&VectorN<T, DimX>, &MatrixN<T, DimX>) -> Option<GenericArray<VectorN<T, DimX>, NumS>>,
         >,
         w_m: GenericArray<T, NumS>,
         w_c: GenericArray<T, NumS>,
@@ -75,9 +85,13 @@ where
         }
     }
 
+    #[throws(UkfError)]
     pub fn run(&mut self, z: VectorN<T, DimZ>) -> (VectorN<T, DimX>, MatrixN<T, DimX>) {
         //sigma points
-        let mut upsilon = (self.s)(&self.x, &self.p);
+        let mut upsilon = match (self.s)(&self.x, &self.p){
+            Some(sigmas) => sigmas,
+            None => throw!(UkfError::SigmaPointError)
+        };
         //predict
         for point in upsilon.iter_mut() {
             *point = (self.f)(point);
@@ -95,7 +109,10 @@ where
                 acc + &r * &r.transpose() * *weight
             },
         ) + &self.q;
-        let upsilon = (self.s)(&x, &p);
+        let upsilon = match (self.s)(&x, &p){
+            Some(sigmas) => sigmas,
+            None => throw!(UkfError::SigmaPointError)
+        };
         //update
         let zeta: GenericArray<VectorN<T, DimZ>, NumS> =
             upsilon.iter().map(|point| (self.h)(point)).collect();
@@ -113,10 +130,14 @@ where
                 acc + &r * &r.transpose() * *weight
             },
         ) + &self.r;
+        let p_z_inverse = match p_z.clone().try_inverse(){
+            Some(m) => m,
+            None => throw!(UkfError::InverseError)
+        };
         let k = upsilon.iter().zip(zeta.iter()).zip(self.w_c.iter()).fold(
             MatrixMN::<T, DimX, DimZ>::zeros(),
             |acc, ((point, meas), weight)| acc + (point - &x) * (meas - &mu).transpose() * *weight,
-        ) * p_z.clone().try_inverse().unwrap();
+        ) * p_z_inverse;
         self.x = x + &k * y;
         self.p = &p - &k * p_z * &k.transpose();
         (self.x.clone(), self.p.clone())
